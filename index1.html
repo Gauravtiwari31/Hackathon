@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Change Detection System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'space-purple': '#6366F1',
+                        'neon-blue': '#00D4FF',
+                        'electric-pink': '#FF0080',
+                        'cyber-green': '#00FF88',
+                        'plasma-orange': '#FF6B35',
+                        'galaxy-dark': '#0F0F23',
+                        'nebula-pink': '#FF49DB',
+                        'solar-yellow': '#FFD700',
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'orbit': 'orbit 20s linear infinite',
+                        'twinkle': 'twinkle 2s ease-in-out infinite alternate',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                    },
+                    backgroundImage: {
+                        'space-gradient': 'linear-gradient(135deg, #0F0F23 0%, #1A1A3E 25%, #2D1B69 50%, #6366F1 75%, #00D4FF 100%)',
+                        'dark-space': 'linear-gradient(135deg, #000000 0%, #1A0A2E 25%, #16213E 50%, #0F3460 75%, #533483 100%)',
+                        'neon-gradient': 'linear-gradient(45deg, #00D4FF, #FF0080, #00FF88)',
+                        'cyber-gradient': 'linear-gradient(45deg, #6366F1, #00D4FF)',
+                        'plasma-gradient': 'linear-gradient(45deg, #FF6B35, #FFD700)',
+                        'aurora-gradient': 'linear-gradient(45deg, #00FF88, #00D4FF, #FF49DB)',
+                    },
+                    boxShadow: {
+                        'neon': '0 0 20px rgba(0, 212, 255, 0.5)',
+                        'cyber': '0 0 30px rgba(99, 102, 241, 0.4)',
+                        'plasma': '0 0 25px rgba(255, 107, 53, 0.3)',
+                        'electric': '0 0 40px rgba(255, 0, 128, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes glow {
+            0% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
+        }
+        
+        @keyframes orbit {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-effect {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite alternate;
+        }
+        
+        .satellite-orbit {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 50%;
+            animation: orbit 20s linear infinite;
+        }
+        
+        .satellite-orbit::before {
+            content: '🛰️';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.8));
+        }
+        
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-8px) scale(1.02);
+        }
+        
+        .animated-border {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .animated-border::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), transparent);
+            transition: left 0.5s;
+        }
+        
+        .animated-border:hover::before {
+            left: 100%;
+        }
+        
+        /* Enhanced map controls */
+        .leaflet-control-container .leaflet-control {
+            background: rgba(15, 15, 35, 0.8) !important;
+            border: 1px solid rgba(0, 212, 255, 0.3) !important;
+            color: white !important;
+        }
+        
+        .leaflet-control-container .leaflet-control a {
+            color: white !important;
+            background: transparent !important;
+        }
+        
+        .leaflet-control-container .leaflet-control a:hover {
+            background: rgba(0, 212, 255, 0.2) !important;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 15, 35, 0.9) !important;
+            color: white !important;
+            border: 1px solid rgba(0, 212, 255, 0.5) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 12px !important;
+        }
+        
+        .leaflet-popup-tip {
+            background: rgba(15, 15, 35, 0.9) !important;
+        }
+        
+        .leaflet-popup-content {
+            margin: 12px !important;
+        }
+        
+        /* Change detection layer styles */
+        .change-detection-layer {
+            stroke: #FF0080;
+            stroke-width: 2;
+            fill: #FF0080;
+            fill-opacity: 0.3;
+        }
+        
+        /* Heatmap legend */
+        .info.legend {
+            background: rgba(15, 15, 35, 0.8);
+            padding: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            border-radius: 8px;
+            color: white;
+            line-height: 1.5;
+        }
+        
+        .info.legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="bg-space-gradient dark:bg-dark-space text-white min-h-screen overflow-x-hidden transition-all duration-300">
+    <!-- Background Animation -->
+    <div class="fixed inset-0 pointer-events-none z-0">
+        <div class="satellite-orbit" style="top: 10%; left: 10%;"></div>
+        <div class="satellite-orbit" style="top: 60%; right: 20%; animation-delay: -10s;"></div>
+        <div id="stars-container"></div>
+    </div>
+
+    <!-- Auth Modals -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-md relative">
+            <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-xl hover:text-neon-blue transition-all">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-neon-blue to-electric-pink bg-clip-text text-transparent">
+                <i class="fas fa-user-astronaut mr-2"></i>Login
+            </h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Email</label>
+                    <input type="email" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="your@email.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Password</label>
+                    <input type="password" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-neon-gradient text-white py-3 rounded-xl font-bold hover:shadow-neon transition-all duration-300 hover:scale-105 animated-border">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+                <div class="text-center text-sm mt-4">
+                    Don't have an account? 
+                    <button type="button" onclick="showSignup()" class="text-neon-blue hover:underline">Sign up</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="signup-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-md relative">
+            <button onclick="closeModal('signup-modal')" class="absolute top-4 right-4 text-xl hover:text-neon-blue transition-all">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-electric-pink to-nebula-pink bg-clip-text text-transparent">
+                <i class="fas fa-rocket mr-2"></i>Sign Up
+            </h2>
+            <form id="signup-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Full Name</label>
+                    <input type="text" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="John Doe">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Email</label>
+                    <input type="email" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="your@email.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Password</label>
+                    <input type="password" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="••••••••">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-cyan-300">Confirm Password</label>
+                    <input type="password" required class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-electric-pink to-nebula-pink text-white py-3 rounded-xl font-bold hover:shadow-electric transition-all duration-300 hover:scale-105 animated-border">
+                    <i class="fas fa-user-plus mr-2"></i>Create Account
+                </button>
+                <div class="text-center text-sm mt-4">
+                    Already have an account? 
+                    <button type="button" onclick="showLogin()" class="text-neon-blue hover:underline">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Guest Mode Modal -->
+    <div id="guest-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-md relative">
+            <button onclick="closeModal('guest-modal')" class="absolute top-4 right-4 text-xl hover:text-neon-blue transition-all">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-solar-yellow to-plasma-orange bg-clip-text text-transparent">
+                <i class="fas fa-user-secret mr-2"></i>Continue as Guest
+            </h2>
+            <div class="space-y-6">
+                <p class="text-center">
+                    You'll have limited access to features. For full functionality, please sign up or login.
+                </p>
+                <div class="space-y-3">
+                    <button onclick="startAsGuest()" class="w-full bg-gradient-to-r from-solar-yellow to-plasma-orange text-white py-3 rounded-xl font-bold hover:shadow-plasma transition-all duration-300 hover:scale-105 animated-border">
+                        <i class="fas fa-space-shuttle mr-2"></i>Continue as Guest
+                    </button>
+                    <button onclick="showSignup()" class="w-full glass-effect py-3 rounded-xl font-bold hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                        <i class="fas fa-user-plus mr-2"></i>Sign Up Instead
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-effect sticky top-0 z-50 border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row justify-between items-center py-4 gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-satellite text-3xl text-neon-blue animate-pulse-slow"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-neon-blue to-electric-pink bg-clip-text text-transparent">
+                            SatelliteVision Pro
+                        </h1>
+                        <p class="text-sm text-cyan-300">By CodeBlooded</p>
+                    </div>
+                </div>
+                
+                <nav class="flex flex-wrap gap-3">
+                    <div id="auth-buttons" class="flex gap-3">
+                        <button onclick="showLogin()" class="px-4 py-2 glass-effect rounded-xl hover:bg-cyber-gradient hover:shadow-cyber transition-all duration-300 flex items-center gap-2 hover:scale-105">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Login
+                        </button>
+                        <button onclick="showSignup()" class="px-4 py-2 glass-effect rounded-xl hover:bg-aurora-gradient hover:shadow-electric transition-all duration-300 flex items-center gap-2 hover:scale-105">
+                            <i class="fas fa-user-plus"></i>
+                            Sign Up
+                        </button>
+                        <button onclick="showGuestModal()" class="px-4 py-2 glass-effect rounded-xl hover:bg-plasma-gradient hover:shadow-plasma transition-all duration-300 flex items-center gap-2 hover:scale-105">
+                            <i class="fas fa-user-secret"></i>
+                            Guest
+                        </button>
+                    </div>
+                    <div id="user-menu" class="hidden items-center gap-3">
+                        <div class="relative group">
+                            <button class="flex items-center gap-2 glass-effect px-4 py-2 rounded-xl hover:bg-cyber-gradient transition-all duration-300">
+                                <img src="https://ui-avatars.com/api/?name=Guest+User&background=6366F1&color=fff" alt="User" class="w-8 h-8 rounded-full">
+                                <span id="username-display">Guest User</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 glass-effect rounded-xl shadow-lg hidden group-hover:block z-50">
+                                <div class="py-1">
+                                    <a href="#" class="block px-4 py-2 text-sm hover:bg-white/10">Profile</a>
+                                    <a href="#" class="block px-4 py-2 text-sm hover:bg-white/10">Settings</a>
+                                    <a href="#" onclick="logout()" class="block px-4 py-2 text-sm hover:bg-white/10 text-electric-pink">Logout</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="toggleTheme()" class="p-3 glass-effect rounded-xl hover:bg-cyber-gradient hover:shadow-cyber transition-all duration-300 hover:scale-110">
+                        <i class="fas fa-moon text-xl" id="theme-icon"></i>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                <div class="glass-effect rounded-3xl p-6 hover-lift shadow-cyber">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-3 text-neon-blue">
+                        <i class="fas fa-cogs animate-spin-slow"></i>
+                        Analysis Configuration
+                    </h2>
+                    
+                    <!-- AOI Name -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold mb-2 text-cyan-300">Area of Interest Name</label>
+                        <input type="text" id="aoi-name" class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300" placeholder="Enter AOI name">
+                    </div>
+
+                    <!-- Satellite Type -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold mb-2 text-cyan-300">Satellite Data Source</label>
+                        <select id="satellite-type" class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300">
+                            <option value="liss4" class="bg-gray-800">LISS-4 (5.8m resolution)</option>
+                            <option value="liss3" class="bg-gray-800">LISS-3 (23.5m resolution)</option>
+                            <option value="awifs" class="bg-gray-800">AWiFS (56m resolution)</option>
+                            <option value="sentinel2" class="bg-gray-800">Sentinel-2 (10m resolution)</option>
+                            <option value="landsat8" class="bg-gray-800">Landsat 8 (30m resolution)</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold mb-3 text-cyan-300">Date Range</label>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs mb-1 text-gray-300">Start Date</label>
+                                <input type="date" id="start-date" class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1 text-gray-300">End Date</label>
+                                <input type="date" id="end-date" class="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-neon-blue focus:ring-2 focus:ring-neon-blue/30 transition-all duration-300">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detection Parameters -->
+                    <div class="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl p-4 mb-6 border border-white/10">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2 text-electric-pink">
+                            <i class="fas fa-sliders-h"></i>
+                            Detection Parameters
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm mb-2">Change Threshold: <span class="text-cyber-green font-bold" id="threshold-value">0.3</span></label>
+                                <input type="range" id="threshold" min="0.1" max="1" step="0.1" value="0.3" class="w-full accent-neon-blue">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Minimum Area (ha): <span class="text-cyber-green font-bold" id="min-area-value">1.0</span></label>
+                                <input type="range" id="min-area" min="0.1" max="10" step="0.1" value="1.0" class="w-full accent-neon-blue">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Alert Sensitivity: <span class="text-cyber-green font-bold" id="sensitivity-value">Medium</span></label>
+                                <input type="range" id="sensitivity" min="1" max="3" step="1" value="2" class="w-full accent-neon-blue">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Analysis Button -->
+                    <button onclick="startAnalysis()" class="w-full bg-neon-gradient text-white py-4 rounded-xl font-bold text-lg hover:shadow-neon transition-all duration-300 hover:scale-105 animated-border flex items-center justify-center gap-3">
+                        <i class="fas fa-play animate-bounce-slow"></i>
+                        Start Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map Section -->
+            <div class="lg:col-span-3">
+                <div class="glass-effect rounded-3xl overflow-hidden hover-lift shadow-cyber">
+                    <!-- Map Header -->
+                    <div class="bg-gradient-to-r from-space-purple to-neon-blue p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h2 class="text-xl font-bold flex items-center gap-3">
+                            <i class="fas fa-globe animate-float"></i>
+                            Interactive Map
+                        </h2>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="setMapView('satellite')" class="map-btn active px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2">
+                                <i class="fas fa-satellite"></i>
+                                Satellite
+                            </button>
+                            <button onclick="setMapView('terrain')" class="map-btn px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2">
+                                <i class="fas fa-mountain"></i>
+                                Terrain
+                            </button>
+                            <button onclick="setMapView('changes')" class="map-btn px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Changes
+                            </button>
+                            <button onclick="setMapView('heatmap')" class="map-btn px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2">
+                                <i class="fas fa-fire"></i>
+                                Heatmap
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Map Container -->
+                    <div class="relative">
+                        <div id="map" class="h-96 lg:h-[500px] w-full"></div>
+                        
+                        <!-- Map Controls -->
+                        <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                            <button onclick="zoomIn()" class="glass-effect p-2 rounded-lg hover:bg-neon-blue/20 transition-all">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button onclick="zoomOut()" class="glass-effect p-2 rounded-lg hover:bg-neon-blue/20 transition-all">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button onclick="locateUser()" class="glass-effect p-2 rounded-lg hover:bg-neon-blue/20 transition-all">
+                                <i class="fas fa-location-arrow"></i>
+                            </button>
+                            <button onclick="drawPolygon()" class="glass-effect p-2 rounded-lg hover:bg-neon-blue/20 transition-all">
+                                <i class="fas fa-draw-polygon"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Status Panel -->
+                        <div class="absolute top-4 right-4 glass-effect rounded-xl p-4 space-y-2 z-10">
+                            <div class="flex items-center gap-2 text-sm">
+                                <div class="w-2 h-2 bg-cyber-green rounded-full animate-pulse"></div>
+                                <span>System Online</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <div class="w-2 h-2 bg-plasma-orange rounded-full animate-pulse"></div>
+                                <span>Processing Queue: 3</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <div class="w-2 h-2 bg-neon-blue rounded-full animate-pulse"></div>
+                                <span>Last Update: 2 min ago</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div class="absolute bottom-4 right-4 glass-effect rounded-xl p-4 z-10">
+                            <div id="map-legend" class="text-sm">
+                                <h4 class="font-bold mb-2 text-center">Change Intensity</h4>
+                                <div class="flex items-center mb-1">
+                                    <div class="w-4 h-4 bg-green-500 mr-2"></div>
+                                    <span>Low (0-0.3)</span>
+                                </div>
+                                <div class="flex items-center mb-1">
+                                    <div class="w-4 h-4 bg-yellow-500 mr-2"></div>
+                                    <span>Medium (0.3-0.7)</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-red-500 mr-2"></div>
+                                    <span>High (0.7-1.0)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="glass-effect rounded-3xl p-6 mt-8 hover-lift shadow-cyber">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3 text-electric-pink">
+                        <i class="fas fa-chart-bar animate-bounce-slow"></i>
+                        Analysis Results
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                        <div class="result-card bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl p-6 text-center hover-lift border border-white/10 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-neon-gradient"></div>
+                            <i class="fas fa-search text-4xl text-neon-blue mb-4 animate-float"></i>
+                            <h3 class="text-lg font-semibold mb-2">Areas Analyzed</h3>
+                            <div class="text-3xl font-bold text-cyber-green mb-2">0</div>
+                            <p class="text-sm text-gray-300">Total hectares processed</p>
+                        </div>
+                        
+                        <div class="result-card bg-gradient-to-br from-pink-500/20 to-red-500/20 rounded-2xl p-6 text-center hover-lift border border-white/10 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-electric-pink to-plasma-orange"></div>
+                            <i class="fas fa-exclamation-triangle text-4xl text-electric-pink mb-4 animate-float"></i>
+                            <h3 class="text-lg font-semibold mb-2">Changes Detected</h3>
+                            <div class="text-3xl font-bold text-cyber-green mb-2">0</div>
+                            <p class="text-sm text-gray-300">Significant changes found</p>
+                        </div>
+                        
+                        <div class="result-card bg-gradient-to-br from-green-500/20 to-teal-500/20 rounded-2xl p-6 text-center hover-lift border border-white/10 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-aurora-gradient"></div>
+                            <i class="fas fa-bell text-4xl text-cyber-green mb-4 animate-float"></i>
+                            <h3 class="text-lg font-semibold mb-2">Active Alerts</h3>
+                            <div class="text-3xl font-bold text-cyber-green mb-2">0</div>
+                            <p class="text-sm text-gray-300">High priority alerts</p>
+                        </div>
+                        
+                        <div class="result-card bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-2xl p-6 text-center hover-lift border border-white/10 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-plasma-gradient"></div>
+                            <i class="fas fa-clock text-4xl text-solar-yellow mb-4 animate-float"></i>
+                            <h3 class="text-lg font-semibold mb-2">Processing Time</h3>
+                            <div class="text-3xl font-bold text-cyber-green mb-2">--</div>
+                            <p class="text-sm text-gray-300">Analysis duration</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Change Details Table -->
+                    <div class="mt-8 overflow-x-auto">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center gap-2 text-neon-blue">
+                            <i class="fas fa-table"></i>
+                            Change Details
+                        </h3>
+                        <table class="w-full glass-effect rounded-xl overflow-hidden">
+                            <thead class="bg-white/10">
+                                <tr>
+                                    <th class="py-3 px-4 text-left">ID</th>
+                                    <th class="py-3 px-4 text-left">Location</th>
+                                    <th class="py-3 px-4 text-left">Date</th>
+                                    <th class="py-3 px-4 text-left">Area (ha)</th>
+                                    <th class="py-3 px-4 text-left">Confidence</th>
+                                    <th class="py-3 px-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/10">
+                                <tr>
+                                    <td colspan="6" class="py-6 text-center text-gray-400">
+                                        No changes detected yet. Run an analysis to see results.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="glass-effect rounded-2xl p-8 text-center">
+            <div class="w-16 h-16 border-4 border-white/20 border-t-neon-blue rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-lg font-semibold">Processing satellite imagery...</p>
+            <div class="mt-4 flex justify-center gap-1">
+                <div class="w-2 h-2 bg-neon-blue rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-electric-pink rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                <div class="w-2 h-2 bg-cyber-green rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.min.js"></script>
+    <script>
+        let map;
+        let drawnItems;
+        let currentTheme = 'light';
+        let currentUser = null;
+        let isGuest = false;
+        let baseLayers = {};
+        let changeDetectionLayer = null;
+        let heatmapLayer = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            updateRangeValues();
+            createStars();
+            setDefaultDates();
+            
+            // Event listeners for auth forms
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('signup-form').addEventListener('submit', handleSignup);
+            
+            // Check if user is already logged in (from localStorage)
+            checkAuthStatus();
+        });
+
+        function checkAuthStatus() {
+            const savedUser = localStorage.getItem('satelliteVisionUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showUserMenu();
+            }
+        }
+
+        function showUserMenu() {
+            document.getElementById('auth-buttons').classList.add('hidden');
+            document.getElementById('user-menu').classList.remove('hidden');
+            document.getElementById('username-display').textContent = currentUser ? currentUser.name : 'Guest User';
+        }
+
+        function showAuthButtons() {
+            document.getElementById('auth-buttons').classList.remove('hidden');
+            document.getElementById('user-menu').classList.add('hidden');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = e.target[0].value;
+            const password = e.target[1].value;
+            
+            // Simulate login (in a real app, you'd call an API)
+            currentUser = {
+                name: "Demo User",
+                email: email,
+                isPremium: true
+            };
+            
+            localStorage.setItem('satelliteVisionUser', JSON.stringify(currentUser));
+            closeModal('login-modal');
+            showUserMenu();
+            showSuccessMessage(`Welcome back, ${currentUser.name}!`);
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const name = e.target[0].value;
+            const email = e.target[1].value;
+            const password = e.target[2].value;
+            const confirmPassword = e.target[3].value;
+            
+            if (password !== confirmPassword) {
+                showErrorMessage("Passwords don't match!");
+                return;
+            }
+            
+            // Simulate signup (in a real app, you'd call an API)
+            currentUser = {
+                name: name,
+                email: email,
+                isPremium: false
+            };
+            
+            localStorage.setItem('satelliteVisionUser', JSON.stringify(currentUser));
+            closeModal('signup-modal');
+            showUserMenu();
+            showSuccessMessage(`Welcome to SatelliteVision, ${name}!`);
+        }
+
+        function logout() {
+            currentUser = null;
+            isGuest = false;
+            localStorage.removeItem('satelliteVisionUser');
+            showAuthButtons();
+            showSuccessMessage("You've been logged out successfully.");
+        }
+
+        function startAsGuest() {
+            isGuest = true;
+            currentUser = {
+                name: "Guest User",
+                email: null,
+                isPremium: false
+            };
+            closeModal('guest-modal');
+            showUserMenu();
+            showSuccessMessage("You're now using SatelliteVision in guest mode. Some features may be limited.");
+        }
+
+        function showLogin() {
+            closeAllModals();
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
+
+        function showSignup() {
+            closeAllModals();
+            document.getElementById('signup-modal').classList.remove('hidden');
+        }
+
+        function showGuestModal() {
+            closeAllModals();
+            document.getElementById('guest-modal').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function closeAllModals() {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('signup-modal').classList.add('hidden');
+            document.getElementById('guest-modal').classList.add('hidden');
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark');
+            
+            const themeIcon = document.getElementById('theme-icon');
+            if (currentTheme === 'dark') {
+                themeIcon.className = 'fas fa-sun text-xl';
+            } else {
+                themeIcon.className = 'fas fa-moon text-xl';
+            }
+        }
+
+        function initMap() {
+            // Initialize the map with a more detailed view
+            map = L.map('map', {
+                center: [20.5937, 78.9629],
+                zoom: 5,
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true
+            });
+
+            // Add base layers with different map styles
+            baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                maxZoom: 19
+            });
+
+            baseLayers.terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+                maxZoom: 17
+            });
+
+            baseLayers.streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            });
+
+            // Add the default layer
+            baseLayers.satellite.addTo(map);
+
+            // Initialize feature group for drawn items
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            // Add draw control
+            const drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: true
+                },
+                draw: {
+                    polygon: {
+                        shapeOptions: {
+                            color: '#00D4FF',
+                            fillColor: '#00D4FF',
+                            fillOpacity: 0.2
+                        },
+                        allowIntersection: false,
+                        showArea: true
+                    },
+                    rectangle: {
+                        shapeOptions: {
+                            color: '#00D4FF',
+                            fillColor: '#00D4FF',
+                            fillOpacity: 0.2
+                        }
+                    },
+                    circle: false,
+                    marker: false,
+                    polyline: false,
+                    circlemarker: false
+                }
+            });
+            map.addControl(drawControl);
+
+            // Handle draw events
+            map.on('draw:created', function(e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                
+                // Add popup with area information
+                if (layer instanceof L.Polygon) {
+                    const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                    const areaHa = (area / 10000).toFixed(2);
+                    layer.bindPopup(`<b>Area of Interest</b><br>Size: ${areaHa} hectares`);
+                }
+                
+                const aoiName = document.getElementById('aoi-name');
+                if (!aoiName.value) {
+                    aoiName.value = `AOI_${Date.now()}`;
+                }
+            });
+
+            // Add scale control
+            L.control.scale({imperial: false, position: 'bottomleft'}).addTo(map);
+
+            // Add a sample change detection layer (in a real app, this would come from your analysis)
+            addSampleChangeDetection();
+            
+            // Add a sample heatmap (in a real app, this would come from your analysis)
+            addSampleHeatmap();
+        }
+
+        function addSampleChangeDetection() {
+            // This is just sample data - in a real app, you'd get this from your analysis
+            const sampleChanges = [
+                {lat: 20.5937, lng: 78.9629, intensity: 0.8, area: 2.5, date: '2023-05-15'},
+                {lat: 19.0760, lng: 72.8777, intensity: 0.6, area: 1.2, date: '2023-05-10'},
+                {lat: 28.6139, lng: 77.2090, intensity: 0.9, area: 3.1, date: '2023-05-18'},
+                {lat: 22.5726, lng: 88.3639, intensity: 0.4, area: 0.8, date: '2023-05-12'},
+                {lat: 13.0827, lng: 80.2707, intensity: 0.7, area: 1.5, date: '2023-05-14'}
+            ];
+
+            changeDetectionLayer = L.layerGroup();
+            
+            sampleChanges.forEach(change => {
+                const color = change.intensity > 0.7 ? '#FF0080' : 
+                             change.intensity > 0.4 ? '#FF6B35' : '#FFD700';
+                
+                const circle = L.circle([change.lat, change.lng], {
+                    radius: change.area * 500, // Scale for visibility
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.5,
+                    className: 'change-detection-layer'
+                }).bindPopup(`
+                    <b>Change Detected</b><br>
+                    Date: ${change.date}<br>
+                    Area: ${change.area} ha<br>
+                    Confidence: ${(change.intensity * 100).toFixed(0)}%<br>
+                    <button onclick="zoomToChange(${change.lat}, ${change.lng})" class="mt-2 px-2 py-1 bg-neon-blue text-white text-xs rounded hover:bg-neon-blue/80 transition-all">
+                        Zoom to Location
+                    </button>
+                `);
+                
+                changeDetectionLayer.addLayer(circle);
+            });
+        }
+
+        function addSampleHeatmap() {
+            // This is just sample data - in a real app, you'd get this from your analysis
+            const heatmapData = [
+                {lat: 20.5937, lng: 78.9629, intensity: 0.8},
+                {lat: 19.0760, lng: 72.8777, intensity: 0.6},
+                {lat: 28.6139, lng: 77.2090, intensity: 0.9},
+                {lat: 22.5726, lng: 88.3639, intensity: 0.4},
+                {lat: 13.0827, lng: 80.2707, intensity: 0.7},
+                {lat: 15.2993, lng: 74.1240, intensity: 0.5},
+                {lat: 26.9124, lng: 75.7873, intensity: 0.3},
+                {lat: 12.9716, lng: 77.5946, intensity: 0.6},
+                {lat: 17.3850, lng: 78.4867, intensity: 0.7},
+                {lat: 21.1458, lng: 79.0882, intensity: 0.5}
+            ];
+
+            const points = heatmapData.map(point => {
+                return [point.lat, point.lng, point.intensity * 100];
+            });
+
+            heatmapLayer = L.heatLayer(points, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+            });
+        }
+
+        function setMapView(view) {
+            // Update active button
+            document.querySelectorAll('.map-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-white/20');
+            });
+            
+            event.target.classList.add('active', 'bg-white/20');
+            
+            // Switch layers based on view
+            switch(view) {
+                case 'satellite':
+                    map.eachLayer(layer => {
+                        if (baseLayers.satellite === layer) layer.addTo(map);
+                        else if (Object.values(baseLayers).includes(layer)) map.removeLayer(layer);
+                    });
+                    baseLayers.satellite.addTo(map);
+                    if (changeDetectionLayer) map.removeLayer(changeDetectionLayer);
+                    if (heatmapLayer) map.removeLayer(heatmapLayer);
+                    break;
+                    
+                case 'terrain':
+                    map.eachLayer(layer => {
+                        if (baseLayers.terrain === layer) layer.addTo(map);
+                        else if (Object.values(baseLayers).includes(layer)) map.removeLayer(layer);
+                    });
+                    baseLayers.terrain.addTo(map);
+                    if (changeDetectionLayer) map.removeLayer(changeDetectionLayer);
+                    if (heatmapLayer) map.removeLayer(heatmapLayer);
+                    break;
+                    
+                case 'changes':
+                    map.eachLayer(layer => {
+                        if (baseLayers.satellite === layer) layer.addTo(map);
+                        else if (Object.values(baseLayers).includes(layer)) map.removeLayer(layer);
+                    });
+                    baseLayers.satellite.addTo(map);
+                    if (changeDetectionLayer) changeDetectionLayer.addTo(map);
+                    if (heatmapLayer) map.removeLayer(heatmapLayer);
+                    break;
+                    
+                case 'heatmap':
+                    map.eachLayer(layer => {
+                        if (baseLayers.streets === layer) layer.addTo(map);
+                        else if (Object.values(baseLayers).includes(layer)) map.removeLayer(layer);
+                    });
+                    baseLayers.streets.addTo(map);
+                    if (changeDetectionLayer) map.removeLayer(changeDetectionLayer);
+                    if (heatmapLayer) heatmapLayer.addTo(map);
+                    break;
+            }
+            
+            // Keep drawn items on top
+            if (drawnItems) drawnItems.addTo(map);
+        }
+
+        function zoomIn() {
+            map.zoomIn();
+        }
+
+        function zoomOut() {
+            map.zoomOut();
+        }
+
+        function locateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    map.flyTo([position.coords.latitude, position.coords.longitude], 13);
+                    L.marker([position.coords.latitude, position.coords.longitude], {
+                        icon: L.divIcon({
+                            className: 'user-location-marker',
+                            html: '<i class="fas fa-user-circle text-3xl text-neon-blue"></i>',
+                            iconSize: [30, 30]
+                        })
+                    }).addTo(map).bindPopup('Your current location').openPopup();
+                }, function(error) {
+                    showErrorMessage('Unable to get your location: ' + error.message);
+                });
+            } else {
+                showErrorMessage('Geolocation is not supported by your browser');
+            }
+        }
+
+        function drawPolygon() {
+            // This triggers the draw control's polygon mode
+            const drawControl = document.querySelector('.leaflet-draw-draw-polygon');
+            if (drawControl) drawControl.click();
+        }
+
+        function zoomToChange(lat, lng) {
+            map.flyTo([lat, lng], 15);
+        }
+
+        function updateRangeValues() {
+            const threshold = document.getElementById('threshold');
+            const minArea = document.getElementById('min-area');
+            const sensitivity = document.getElementById('sensitivity');
+            
+            threshold.addEventListener('input', function() {
+                document.getElementById('threshold-value').textContent = this.value;
+            });
+            
+            minArea.addEventListener('input', function() {
+                document.getElementById('min-area-value').textContent = this.value;
+            });
+            
+            sensitivity.addEventListener('input', function() {
+                const values = ['Low', 'Medium', 'High'];
+                document.getElementById('sensitivity-value').textContent = values[this.value - 1];
+            });
+        }
+
+        function setDefaultDates() {
+            const today = new Date();
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            
+            document.getElementById('start-date').value = lastMonth.toISOString().split('T')[0];
+            document.getElementById('end-date').value = today.toISOString().split('T')[0];
+        }
+
+        function startAnalysis() {
+            if (isGuest) {
+                showErrorMessage('Guest users have limited access. Please sign up for full functionality.');
+                return;
+            }
+            
+            if (drawnItems.getLayers().length === 0) {
+                showErrorMessage('Please draw an area of interest on the map first.');
+                return;
+            }
+            
+            const loading = document.getElementById('loading');
+            loading.classList.remove('hidden');
+            
+            setTimeout(() => {
+                loading.classList.add('hidden');
+                updateResults();
+                showSuccessMessage('Analysis completed successfully!');
+                
+                // Simulate adding new changes to the map
+                simulateNewChanges();
+            }, 3000);
+        }
+
+        function simulateNewChanges() {
+            // Get the bounds of the drawn items
+            const bounds = drawnItems.getBounds();
+            const center = bounds.getCenter();
+            
+            // Generate some random changes within the bounds
+            const newChanges = [];
+            for (let i = 0; i < 5; i++) {
+                const lat = center.lat + (Math.random() - 0.5) * (bounds.getNorth() - bounds.getSouth()) * 0.5;
+                const lng = center.lng + (Math.random() - 0.5) * (bounds.getEast() - bounds.getWest()) * 0.5;
+                
+                newChanges.push({
+                    lat: lat,
+                    lng: lng,
+                    intensity: Math.random().toFixed(1),
+                    area: (Math.random() * 3 + 0.5).toFixed(1),
+                    date: new Date().toISOString().split('T')[0]
+                });
+            }
+            
+            // Add these to the change detection layer
+            newChanges.forEach(change => {
+                const color = change.intensity > 0.7 ? '#FF0080' : 
+                             change.intensity > 0.4 ? '#FF6B35' : '#FFD700';
+                
+                const circle = L.circle([change.lat, change.lng], {
+                    radius: change.area * 500, // Scale for visibility
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.5,
+                    className: 'change-detection-layer'
+                }).bindPopup(`
+                    <b>Change Detected</b><br>
+                    Date: ${change.date}<br>
+                    Area: ${change.area} ha<br>
+                    Confidence: ${(change.intensity * 100).toFixed(0)}%<br>
+                    <button onclick="zoomToChange(${change.lat}, ${change.lng})" class="mt-2 px-2 py-1 bg-neon-blue text-white text-xs rounded hover:bg-neon-blue/80 transition-all">
+                        Zoom to Location
+                    </button>
+                `);
+                
+                changeDetectionLayer.addLayer(circle);
+            });
+            
+            // Update the heatmap with new points
+            const heatmapPoints = newChanges.map(point => {
+                return [point.lat, point.lng, point.intensity * 100];
+            });
+            
+            heatmapLayer.addLatLngs(heatmapPoints);
+        }
+
+        function updateResults() {
+            const results = [
+                { selector: '.result-card:nth-child(1) .text-3xl', value: '245.7' },
+                { selector: '.result-card:nth-child(2) .text-3xl', value: '12' },
+                { selector: '.result-card:nth-child(3) .text-3xl', value: '3' },
+                { selector: '.result-card:nth-child(4) .text-3xl', value: '2.3s' }
+            ];
+            
+            results.forEach(result => {
+                const element = document.querySelector(result.selector);
+                if (element) {
+                    element.textContent = result.value;
+                }
+            });
+            
+            // Update the change details table
+            const tableBody = document.querySelector('tbody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td class="py-3 px-4">CD001</td>
+                    <td class="py-3 px-4">Mumbai Suburbs</td>
+                    <td class="py-3 px-4">2023-05-15</td>
+                    <td class="py-3 px-4">2.5</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                            High (80%)
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <button class="text-xs px-2 py-1 bg-neon-blue/20 text-neon-blue rounded hover:bg-neon-blue/30 transition-all">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-3 px-4">CD002</td>
+                    <td class="py-3 px-4">Delhi Region</td>
+                    <td class="py-3 px-4">2023-05-14</td>
+                    <td class="py-3 px-4">1.8</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                            Medium (60%)
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <button class="text-xs px-2 py-1 bg-neon-blue/20 text-neon-blue rounded hover:bg-neon-blue/30 transition-all">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-3 px-4">CD003</td>
+                    <td class="py-3 px-4">Bangalore Outskirts</td>
+                    <td class="py-3 px-4">2023-05-12</td>
+                    <td class="py-3 px-4">0.9</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            Low (40%)
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <button class="text-xs px-2 py-1 bg-neon-blue/20 text-neon-blue rounded hover:bg-neon-blue/30 transition-all">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showSuccessMessage(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-cyber-gradient text-white px-6 py-4 rounded-xl shadow-neon z-50 font-semibold animate-slide-in flex items-center gap-3';
+            notification.innerHTML = `
+                <i class="fas fa-check-circle text-xl"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+
+        function showErrorMessage(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-gradient-to-r from-electric-pink to-plasma-orange text-white px-6 py-4 rounded-xl shadow-electric z-50 font-semibold animate-slide-in flex items-center gap-3';
+            notification.innerHTML = `
+                <i class="fas fa-exclamation-circle text-xl"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 5000);
+        }
+
+        function createStars() {
+            const starsContainer = document.getElementById('stars-container');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                star.style.width = Math.random() * 3 + 1 + 'px';
+                star.style.height = star.style.width;
+                starsContainer.appendChild(star);
+            }
+        }
+    </script>
+</body>
+</html>
